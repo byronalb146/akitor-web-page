@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 const starterQuestions = [
   "¿Qué puedes hacer por mí?",
   "Necesito ayuda con mi cuenta",
-  "Quiero conocer sus servicios",
+  "Buscar un taladro",
 ];
 
 const initialMessage = {
@@ -36,6 +36,15 @@ function MicIcon() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <rect x="9" y="3" width="6" height="11" rx="3" />
       <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6" />
+    </svg>
+  );
+}
+
+function ProductIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 7V5.5A2.5 2.5 0 0 1 10.5 3h3A2.5 2.5 0 0 1 16 5.5V7" />
+      <path d="M4 7h16v13H4zM4 11h16M10 10v2M14 10v2" />
     </svg>
   );
 }
@@ -167,7 +176,7 @@ export default function App() {
           /producto|buscar|encontrar|precio|comprar/i.test(cleanText);
         if (looksLikeProductSearch) {
           setMascotState("product-search");
-          await wait(2400);
+          await wait(3000);
         } else {
           await wait(900);
         }
@@ -177,8 +186,20 @@ export default function App() {
             id: `${Date.now()}-assistant`,
             role: "assistant",
             content: looksLikeProductSearch
-              ? "¡Encontré opciones que podrían ayudarte! Conecta la API para mostrar aquí los productos reales."
+              ? "¡Encontré una opción que podría ayudarte!"
               : "¡Gracias por contarme! La interfaz está lista. Conecta tu API para recibir respuestas personalizadas de Akitor.",
+            products: looksLikeProductSearch
+              ? [
+                  {
+                    id: "MOCK-TALADRO-001",
+                    name: "Taladro inalámbrico 20 V",
+                    description: "Incluye batería, cargador y estuche.",
+                    price: 799,
+                    currency: "GTQ",
+                    availability: "Disponible",
+                  },
+                ]
+              : undefined,
           },
         ]);
         return;
@@ -202,7 +223,12 @@ export default function App() {
 
       setMessages((current) => [
         ...current,
-        { id: `${Date.now()}-assistant`, role: "assistant", content: reply },
+        {
+          id: `${Date.now()}-assistant`,
+          role: "assistant",
+          content: reply,
+          products: data.products,
+        },
       ]);
     } catch (requestError) {
       setError(requestError.message || "Ocurrió un error. Inténtalo nuevamente.");
@@ -292,7 +318,38 @@ export default function App() {
                   {messages.map((message) => (
                     <div className={`message-row ${message.role}`} key={message.id}>
                       {message.role === "assistant" && <div className="mini-avatar">A</div>}
-                      <div className="message-bubble">{message.content}</div>
+                      <div className="message-content">
+                        <div className="message-bubble">{message.content}</div>
+                        {message.products?.map((product) => (
+                          <article className="product-card" key={product.id}>
+                            <div className="product-visual">
+                              {product.imageUrl ? (
+                                <img src={product.imageUrl} alt="" />
+                              ) : (
+                                <ProductIcon />
+                              )}
+                            </div>
+                            <div className="product-info">
+                              <span className="product-status">{product.availability ?? "Disponible"}</span>
+                              <h3>{product.name}</h3>
+                              {product.description && <p>{product.description}</p>}
+                              {product.price != null && (
+                                <strong className="product-price">
+                                  {new Intl.NumberFormat("es-GT", {
+                                    style: "currency",
+                                    currency: product.currency ?? "GTQ",
+                                  }).format(product.price)}
+                                </strong>
+                              )}
+                            </div>
+                            {product.productUrl && (
+                              <a href={product.productUrl} target="_blank" rel="noreferrer">
+                                Ver producto
+                              </a>
+                            )}
+                          </article>
+                        ))}
+                      </div>
                     </div>
                   ))}
                   {messages.length === 1 && (
