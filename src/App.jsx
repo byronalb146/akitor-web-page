@@ -254,26 +254,26 @@ export default function App() {
 
       let foundAnimationStartedAt = 0;
       const data = await readSSEStream(response, (eventName, payload) => {
-        if (eventName !== "progress" && eventName !== "message") return;
+        if (eventName === "result" || eventName === "error") return;
 
         const message =
           typeof payload === "string"
             ? payload
             : payload.message ?? payload.output ?? "";
-        const stage = `${payload.stage ?? ""} ${message}`.toLowerCase();
+        const stage = `${payload.stage ?? ""}`.toLowerCase();
+        const normalizedMessage = message.toLowerCase();
 
         if (message) setProgressMessage(message);
 
         if (
-          stage.includes("buscando") ||
-          stage.includes("searching") ||
-          stage.includes("product_search")
+          stage === "searching_products" ||
+          normalizedMessage.includes("buscando productos")
         ) {
           setMascotState("product-search");
         } else if (
-          stage.includes("encontré") ||
-          stage.includes("encontre") ||
-          stage.includes("found")
+          stage === "products_found" ||
+          normalizedMessage.includes("encontré") ||
+          normalizedMessage.includes("encontre")
         ) {
           foundAnimationStartedAt = Date.now();
           setMascotState("product-found");
