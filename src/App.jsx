@@ -52,10 +52,73 @@ function ProductIcon() {
 const wait = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-const isProductSearchResponse = (data) =>
-  data?.intent === "product_search" ||
-  data?.type === "product_search" ||
-  data?.ui?.animation === "product_search";
+const readSSEStream = async (response, onEvent) => {
+  if (!response.body) {
+    throw new Error("El navegador no permite leer la respuesta en tiempo real.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalResult = null;
+
+  const processBlock = (block) => {
+    if (!block.trim()) return;
+
+    let eventName = "message";
+    const dataLines = [];
+
+    block.split("\n").forEach((line) => {
+      if (line.startsWith("event:")) {
+        eventName = line.slice(6).trim();
+      } else if (line.startsWith("data:")) {
+        dataLines.push(line.slice(5).trimStart());
+      }
+    });
+
+    const rawData = dataLines.join("\n");
+    if (!rawData || rawData === "[DONE]") return;
+
+    let parsedData;
+    try {
+      parsedData = JSON.parse(rawData);
+    } catch {
+      parsedData = { message: rawData };
+    }
+
+    const resolvedEvent =
+      eventName === "message" && parsedData.event
+        ? parsedData.event
+        : eventName;
+    const payload = parsedData.data ?? parsedData;
+
+    onEvent(resolvedEvent, payload);
+    if (resolvedEvent === "result") finalResult = payload;
+    if (resolvedEvent === "error") {
+      throw new Error(payload.message ?? "La transmisión terminó con un error.");
+    }
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done }).replace(/\r\n/g, "\n");
+
+    const blocks = buffer.split("\n\n");
+    buffer = blocks.pop() ?? "";
+    blocks.forEach(processBlock);
+
+    if (done) {
+      processBlock(buffer);
+      break;
+    }
+  }
+
+  if (!finalResult) {
+    throw new Error("La API terminó la transmisión sin enviar el evento result.");
+  }
+
+  return finalResult;
+};
 
 function MascotPlaceholder({ state }) {
   const isSearchingProduct = state === "product-search";
@@ -95,6 +158,7 @@ export default function App() {
   const [interactionMode, setInteractionMode] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const [mascotState, setMascotState] = useState("idle");
+  const [progressMessage, setProgressMessage] = useState("");
   const [error, setError] = useState("");
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -108,64 +172,6 @@ export default function App() {
     if (!node) return;
     node.style.height = "auto";
     node.style.height = `${Math.min(node.scrollHeight, 120)}px`;
-  };
-
-  const resolveProductSearch = async (initialData, apiUrl) => {
-    if (!isProductSearchResponse(initialData)) return initialData;
-
-    setMascotState("product-search");
-    const animationStartedAt = Date.now();
-    let data = initialData;
-
-    if (data.status === "searching" || data.status === "pending") {
-      if (!data.resultUrl) {
-        throw new Error(
-          "La API indicó una búsqueda de producto, pero no proporcionó resultUrl.",
-        );
-      }
-
-      const apiBaseUrl = new URL(apiUrl, window.location.origin);
-      const resultUrl = new URL(data.resultUrl, apiBaseUrl).toString();
-
-      for (let attempt = 0; attempt < 30; attempt += 1) {
-        await wait(1000);
-        const resultResponse = await fetch(resultUrl);
-        if (!resultResponse.ok) {
-          throw new Error("No pudimos consultar el resultado de la búsqueda.");
-        }
-
-        data = await resultResponse.json();
-        if (data.status === "failed" || data.status === "not_found") {
-          break;
-        }
-        if (
-          data.status === "completed" ||
-          data.status === "found" ||
-          data.status === "not_found"
-        ) {
-          break;
-        }
-      }
-
-      if (data.status === "searching" || data.status === "pending") {
-        throw new Error("La búsqueda del producto tardó demasiado.");
-      }
-    }
-
-    const remainingAnimationTime = 1400 - (Date.now() - animationStartedAt);
-    if (remainingAnimationTime > 0) await wait(remainingAnimationTime);
-
-    const foundProducts =
-      data.status === "found" ||
-      (data.status === "completed" &&
-        (!Array.isArray(data.products) || data.products.length > 0));
-
-    if (foundProducts) {
-      setMascotState("product-found");
-      await wait(1900);
-    }
-
-    return data;
   };
 
   const sendMessage = async (text = input) => {
@@ -182,10 +188,11 @@ export default function App() {
     setInput("");
     setError("");
     setIsSending(true);
+    setProgressMessage("");
     requestAnimationFrame(resizeTextarea);
 
     const baseUrl = __BASE_URL__.replace(/\/+$/, "");
-    const apiUrl = baseUrl ? `${baseUrl}/chat` : "";
+    const apiUrl = baseUrl ? `${baseUrl}/chat/stream` : "";
 
     try {
       if (!apiUrl) {
@@ -245,8 +252,52 @@ export default function App() {
         throw new Error(detail);
       }
 
-      const initialData = await response.json();
-      const data = await resolveProductSearch(initialData, apiUrl);
+      let foundAnimationStartedAt = 0;
+      const data = await readSSEStream(response, (eventName, payload) => {
+        if (eventName !== "progress" && eventName !== "message") return;
+
+        const message =
+          typeof payload === "string"
+            ? payload
+            : payload.message ?? payload.output ?? "";
+        const stage = `${payload.stage ?? ""} ${message}`.toLowerCase();
+
+        if (message) setProgressMessage(message);
+
+        if (
+          stage.includes("buscando") ||
+          stage.includes("searching") ||
+          stage.includes("product_search")
+        ) {
+          setMascotState("product-search");
+        } else if (
+          stage.includes("encontré") ||
+          stage.includes("encontre") ||
+          stage.includes("found")
+        ) {
+          foundAnimationStartedAt = Date.now();
+          setMascotState("product-found");
+        }
+      });
+
+      const foundProducts =
+        data.status === "found" ||
+        (Array.isArray(data.products) && data.products.length > 0);
+
+      if (foundProducts && !foundAnimationStartedAt) {
+        setMascotState("product-found");
+        setProgressMessage("¡Productos encontrados!");
+        foundAnimationStartedAt = Date.now();
+      }
+
+      if (foundAnimationStartedAt) {
+        const remainingAnimationTime =
+          1900 - (Date.now() - foundAnimationStartedAt);
+        if (remainingAnimationTime > 0) {
+          await wait(remainingAnimationTime);
+        }
+      }
+
       const reply = data.output ?? data.reply ?? data.message ?? data.content;
       if (!reply) throw new Error("La API no devolvió una respuesta válida.");
 
@@ -268,6 +319,7 @@ export default function App() {
     } finally {
       setIsSending(false);
       setMascotState("idle");
+      setProgressMessage("");
       textareaRef.current?.focus();
     }
   };
@@ -406,15 +458,10 @@ export default function App() {
                               : ""
                         }`}
                         aria-label={
-                          mascotState === "product-search"
-                            ? "Akitor está buscando productos"
-                            : mascotState === "product-found"
-                              ? "Akitor encontró productos"
-                            : "Akitor está escribiendo"
+                          progressMessage || "Akitor está preparando una respuesta"
                         }
                       >
-                        {mascotState === "product-search" && <strong>Buscando productos</strong>}
-                        {mascotState === "product-found" && <strong>¡Productos encontrados!</strong>}
+                        {progressMessage && <strong>{progressMessage}</strong>}
                         <span /><span /><span />
                       </div>
                     </div>
