@@ -229,6 +229,10 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: cleanText,
+          history: messages.map(({ role, content }) => ({
+            role,
+            content,
+          })),
         }),
       });
 
