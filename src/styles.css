@@ -40,27 +40,8 @@ button { cursor: pointer; }
   align-items: stretch;
 }
 
-.eyebrow { display: flex; align-items: center; gap: 8px; color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: 1.8px; }
-.eyebrow svg { width: 15px; fill: var(--yellow); stroke: var(--yellow); }
-
 .mascot-wrap { width: 100%; height: 280px; position: relative; display: grid; place-items: center; overflow: hidden; }
-.mascot-glow { position: absolute; width: 215px; height: 215px; border-radius: 50%; background: rgba(0, 87, 184, .04); }
-.mascot-glow::before, .mascot-glow::after { content: ""; position: absolute; border: 1px solid rgba(0,87,184,.11); border-radius: 50%; inset: -18px; }
-.mascot-glow::after { inset: -40px; }
-.mascot-card { position: relative; width: 152px; height: 178px; border-radius: 76px 76px 50px 50px; background: var(--blue); box-shadow: 0 22px 45px rgba(0,87,184,.22); display: grid; place-items: center; transform: rotate(-2deg); }
-.mascot-face { position: relative; width: 104px; height: 112px; background: #fff; border-radius: 50% 50% 45% 45%; }
-.ear { position: absolute; width: 31px; height: 43px; top: -17px; background: #fff; }
-.ear.left { left: 5px; border-radius: 80% 20% 30% 20%; transform: rotate(-20deg); }
-.ear.right { right: 5px; border-radius: 20% 80% 20% 30%; transform: rotate(20deg); }
-.eye { position: absolute; width: 9px; height: 13px; top: 43px; background: #19324a; border-radius: 50%; }
-.eye.left { left: 29px; }.eye.right { right: 29px; }
-.nose { position: absolute; width: 12px; height: 9px; top: 63px; left: 46px; border-radius: 50% 50% 60% 60%; background: var(--blue); }
-.smile { position: absolute; width: 26px; height: 14px; top: 69px; left: 39px; border-bottom: 3px solid #19324a; border-radius: 50%; }
-.mascot-badge { position: absolute; right: 5%; bottom: 34px; display: flex; align-items: center; gap: 9px; background: #fff; padding: 9px 13px; border-radius: 14px; box-shadow: 0 10px 30px rgba(24,49,73,.13); color: #77818e; font-size: 9px; letter-spacing: .5px; line-height: 1.2; }
-.mascot-badge svg { width: 18px; fill: var(--yellow); stroke: var(--yellow); }
-.mascot-badge strong { color: var(--blue); font-size: 12px; letter-spacing: 1px; }
-.availability { display: flex; align-items: center; justify-content: center; gap: 9px; margin: auto 0 0; color: #788391; font-size: 11px; }
-.availability span { width: 5px; height: 5px; border-radius: 50%; background: var(--yellow); }
+.mascot-wrap video { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
 
 .chat-card {
   position: relative;
@@ -108,8 +89,6 @@ button { cursor: pointer; }
   background: radial-gradient(circle at 72% 68%, rgba(0,87,184,.07), transparent 42%);
 }
 .mascot-stage .mascot-wrap { position: absolute; right: -10px; bottom: 8px; height: 380px; }
-.mascot-stage .mascot-card { transform: scale(1.12) rotate(-2deg); }
-.mascot-stage .mascot-badge { display: none; }
 .chat-main { width: 64%; min-width: 0; padding-top: 75px; display: flex; flex-direction: column; }
 .welcome-state { flex: 1; padding: 70px 56px 45px; display: flex; flex-direction: column; justify-content: center; }
 .welcome-state h2 { margin: 0 0 28px; max-width: 330px; font: 800 34px/1.15 "Manrope"; letter-spacing: -1.5px; color: #183149; }
@@ -170,8 +149,6 @@ button { cursor: pointer; }
   .chat-main { width: 65%; }
   .welcome-state { padding: 65px 32px 35px; }
   .welcome-state h2 { font-size: 29px; }
-  .mascot-stage .mascot-card { transform: scale(.88) rotate(-2deg); }
-  .mascot-stage .mascot-glow { transform: scale(.85); }
 }
 
 @media (max-width: 520px) {
@@ -184,8 +161,6 @@ button { cursor: pointer; }
   .mode-options { width: min(290px, 100%); }
   .mascot-stage { width: 220px; height: 220px; top: auto; bottom: 0; background: transparent; pointer-events: none; }
   .mascot-stage .mascot-wrap { width: 210px; height: 220px; right: -6px; bottom: -15px; }
-  .mascot-stage .mascot-card { transform: scale(.72) rotate(-2deg); }
-  .mascot-stage .mascot-glow { transform: scale(.68); }
   .composer-area { position: relative; z-index: 2; }
   .messages { padding: 21px 17px 175px; }
   .message-bubble { max-width: 84%; }
@@ -195,4 +170,6 @@ button { cursor: pointer; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; }
+  .mascot-wrap video { display: none; }
+  .mascot-wrap { background: url("/assets/akitor-poster.png") center bottom / contain no-repeat; }
 }

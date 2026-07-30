@@ -22,14 +22,6 @@ function ArrowIcon() {
   );
 }
 
-function SparkleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 2c.6 5.6 4.4 9.4 10 10-5.6.6-9.4 4.4-10 10-.6-5.6-4.4-9.4-10-10 5.6-.6 9.4-4.4 10-10Z" />
-    </svg>
-  );
-}
-
 function KeyboardIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -50,22 +42,17 @@ function MicIcon() {
 
 function MascotPlaceholder() {
   return (
-    <div className="mascot-wrap" aria-label="Espacio reservado para la mascota Akitor">
-      <div className="mascot-glow" />
-      <div className="mascot-card">
-        <div className="mascot-face">
-          <span className="ear left" />
-          <span className="ear right" />
-          <span className="eye left" />
-          <span className="eye right" />
-          <span className="nose" />
-          <span className="smile" />
-        </div>
-      </div>
-      <div className="mascot-badge">
-        <SparkleIcon />
-        <span>Tu mascota<br /><strong>AKITOR</strong></span>
-      </div>
+    <div className="mascot-wrap">
+      <video
+        src="/assets/akitor-animated-transparent.webm"
+        poster="/assets/akitor-poster.png"
+        aria-label="Akitor, mascota animada de AKÍ"
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+      />
     </div>
   );
 }
