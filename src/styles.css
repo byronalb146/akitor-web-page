@@ -118,6 +118,8 @@ button { cursor: pointer; }
 .suggestions button span { float: right; color: var(--blue); margin-left: 18px; }
 .suggestions button:hover { border-color: var(--blue); color: var(--blue); transform: translateX(3px); }
 .typing { display: flex; gap: 4px; padding: 14px 16px; background: var(--soft); border-radius: 6px 17px 17px 17px; }
+.typing.product-search { align-items: center; color: #53606e; }
+.typing.product-search strong { margin-right: 5px; font-size: 11px; font-weight: 600; }
 .typing span { width: 5px; height: 5px; background: #8996a5; border-radius: 50%; animation: bounce 1.2s infinite; }
 .typing span:nth-child(2) { animation-delay: .15s; }.typing span:nth-child(3) { animation-delay: .3s; }
 @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-4px); opacity: 1; } }

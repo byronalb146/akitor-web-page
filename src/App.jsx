@@ -40,12 +40,29 @@ function MicIcon() {
   );
 }
 
-function MascotPlaceholder() {
+const wait = (milliseconds) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+const isProductSearchResponse = (data) =>
+  data?.intent === "product_search" ||
+  data?.type === "product_search" ||
+  data?.ui?.animation === "product_search";
+
+function MascotPlaceholder({ state }) {
+  const isSearchingProduct = state === "product-search";
+  const source = isSearchingProduct
+    ? "/assets/akitor-product-search.webm"
+    : "/assets/akitor-animated-transparent.webm";
+  const poster = isSearchingProduct
+    ? "/assets/akitor-product-search-poster.png"
+    : "/assets/akitor-poster.png";
+
   return (
     <div className="mascot-wrap">
       <video
-        src="/assets/akitor-animated-transparent.webm"
-        poster="/assets/akitor-poster.png"
+        key={source}
+        src={source}
+        poster={poster}
         aria-label="Akitor, mascota animada de AKÍ"
         autoPlay
         loop
@@ -63,6 +80,7 @@ export default function App() {
   const [isSending, setIsSending] = useState(false);
   const [interactionMode, setInteractionMode] = useState(null);
   const [isListening, setIsListening] = useState(false);
+  const [mascotState, setMascotState] = useState("idle");
   const [error, setError] = useState("");
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -76,6 +94,53 @@ export default function App() {
     if (!node) return;
     node.style.height = "auto";
     node.style.height = `${Math.min(node.scrollHeight, 120)}px`;
+  };
+
+  const resolveProductSearch = async (initialData, apiUrl) => {
+    if (!isProductSearchResponse(initialData)) return initialData;
+
+    setMascotState("product-search");
+    const animationStartedAt = Date.now();
+    let data = initialData;
+
+    if (data.status === "searching" || data.status === "pending") {
+      if (!data.resultUrl) {
+        throw new Error(
+          "La API indicó una búsqueda de producto, pero no proporcionó resultUrl.",
+        );
+      }
+
+      const apiBaseUrl = new URL(apiUrl, window.location.origin);
+      const resultUrl = new URL(data.resultUrl, apiBaseUrl).toString();
+
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        await wait(1000);
+        const resultResponse = await fetch(resultUrl);
+        if (!resultResponse.ok) {
+          throw new Error("No pudimos consultar el resultado de la búsqueda.");
+        }
+
+        data = await resultResponse.json();
+        if (data.status === "failed" || data.status === "not_found") {
+          break;
+        }
+        if (
+          data.status === "completed" ||
+          data.status === "found" ||
+          data.status === "not_found"
+        ) {
+          break;
+        }
+      }
+
+      if (data.status === "searching" || data.status === "pending") {
+        throw new Error("La búsqueda del producto tardó demasiado.");
+      }
+    }
+
+    const remainingAnimationTime = 1400 - (Date.now() - animationStartedAt);
+    if (remainingAnimationTime > 0) await wait(remainingAnimationTime);
+    return data;
   };
 
   const sendMessage = async (text = input) => {
@@ -98,14 +163,22 @@ export default function App() {
 
     try {
       if (!apiUrl) {
-        await new Promise((resolve) => setTimeout(resolve, 900));
+        const looksLikeProductSearch =
+          /producto|buscar|encontrar|precio|comprar/i.test(cleanText);
+        if (looksLikeProductSearch) {
+          setMascotState("product-search");
+          await wait(2400);
+        } else {
+          await wait(900);
+        }
         setMessages((current) => [
           ...current,
           {
             id: `${Date.now()}-assistant`,
             role: "assistant",
-            content:
-              "¡Gracias por contarme! La interfaz está lista. Conecta tu API para recibir respuestas personalizadas de Akitor.",
+            content: looksLikeProductSearch
+              ? "¡Encontré opciones que podrían ayudarte! Conecta la API para mostrar aquí los productos reales."
+              : "¡Gracias por contarme! La interfaz está lista. Conecta tu API para recibir respuestas personalizadas de Akitor.",
           },
         ]);
         return;
@@ -122,7 +195,8 @@ export default function App() {
 
       if (!response.ok) throw new Error("No pudimos conectar con Akitor.");
 
-      const data = await response.json();
+      const initialData = await response.json();
+      const data = await resolveProductSearch(initialData, apiUrl);
       const reply = data.reply ?? data.message ?? data.content;
       if (!reply) throw new Error("La API no devolvió una respuesta válida.");
 
@@ -134,6 +208,7 @@ export default function App() {
       setError(requestError.message || "Ocurrió un error. Inténtalo nuevamente.");
     } finally {
       setIsSending(false);
+      setMascotState("idle");
       textareaRef.current?.focus();
     }
   };
@@ -190,7 +265,7 @@ export default function App() {
           </div>
 
           <div className="mascot-stage">
-            <MascotPlaceholder />
+            <MascotPlaceholder state={mascotState} />
           </div>
 
           <div className="chat-main">
@@ -232,7 +307,15 @@ export default function App() {
                   {isSending && (
                     <div className="message-row assistant">
                       <div className="mini-avatar">A</div>
-                      <div className="typing" aria-label="Akitor está escribiendo">
+                      <div
+                        className={`typing ${mascotState === "product-search" ? "product-search" : ""}`}
+                        aria-label={
+                          mascotState === "product-search"
+                            ? "Akitor está buscando productos"
+                            : "Akitor está escribiendo"
+                        }
+                      >
+                        {mascotState === "product-search" && <strong>Buscando productos</strong>}
                         <span /><span /><span />
                       </div>
                     </div>
