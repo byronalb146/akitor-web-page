@@ -59,12 +59,17 @@ const isProductSearchResponse = (data) =>
 
 function MascotPlaceholder({ state }) {
   const isSearchingProduct = state === "product-search";
-  const source = isSearchingProduct
-    ? "/assets/akitor-product-search.webm"
-    : "/assets/akitor-animated-transparent.webm";
-  const poster = isSearchingProduct
-    ? "/assets/akitor-product-search-poster.png"
-    : "/assets/akitor-poster.png";
+  const hasFoundProduct = state === "product-found";
+  const source = hasFoundProduct
+    ? "/assets/akitor-product-found.webm"
+    : isSearchingProduct
+      ? "/assets/akitor-product-search.webm"
+      : "/assets/akitor-animated-transparent.webm";
+  const poster = hasFoundProduct
+    ? "/assets/akitor-product-found-poster.png"
+    : isSearchingProduct
+      ? "/assets/akitor-product-search-poster.png"
+      : "/assets/akitor-poster.png";
 
   return (
     <div className="mascot-wrap">
@@ -74,7 +79,7 @@ function MascotPlaceholder({ state }) {
         poster={poster}
         aria-label="Akitor, mascota animada de AKÍ"
         autoPlay
-        loop
+        loop={!hasFoundProduct}
         muted
         playsInline
         preload="auto"
@@ -149,6 +154,17 @@ export default function App() {
 
     const remainingAnimationTime = 1400 - (Date.now() - animationStartedAt);
     if (remainingAnimationTime > 0) await wait(remainingAnimationTime);
+
+    const foundProducts =
+      data.status === "found" ||
+      (data.status === "completed" &&
+        (!Array.isArray(data.products) || data.products.length > 0));
+
+    if (foundProducts) {
+      setMascotState("product-found");
+      await wait(1900);
+    }
+
     return data;
   };
 
@@ -177,6 +193,8 @@ export default function App() {
         if (looksLikeProductSearch) {
           setMascotState("product-search");
           await wait(3000);
+          setMascotState("product-found");
+          await wait(1900);
         } else {
           await wait(900);
         }
@@ -365,14 +383,23 @@ export default function App() {
                     <div className="message-row assistant">
                       <div className="mini-avatar">A</div>
                       <div
-                        className={`typing ${mascotState === "product-search" ? "product-search" : ""}`}
+                        className={`typing ${
+                          mascotState === "product-search"
+                            ? "product-search"
+                            : mascotState === "product-found"
+                              ? "product-found"
+                              : ""
+                        }`}
                         aria-label={
                           mascotState === "product-search"
                             ? "Akitor está buscando productos"
+                            : mascotState === "product-found"
+                              ? "Akitor encontró productos"
                             : "Akitor está escribiendo"
                         }
                       >
                         {mascotState === "product-search" && <strong>Buscando productos</strong>}
+                        {mascotState === "product-found" && <strong>¡Productos encontrados!</strong>}
                         <span /><span /><span />
                       </div>
                     </div>
