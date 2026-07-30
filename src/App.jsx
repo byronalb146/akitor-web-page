@@ -184,7 +184,8 @@ export default function App() {
     setIsSending(true);
     requestAnimationFrame(resizeTextarea);
 
-    const apiUrl = import.meta.env.VITE_CHAT_API_URL;
+    const baseUrl = __BASE_URL__.replace(/\/+$/, "");
+    const apiUrl = baseUrl ? `${baseUrl}/chat` : "";
 
     try {
       if (!apiUrl) {

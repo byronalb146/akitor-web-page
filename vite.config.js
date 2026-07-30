@@ -4,21 +4,14 @@ import react from "@vitejs/plugin-react";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
-  if (!env.API_PROXY_TARGET) {
-    throw new Error("Falta configurar API_PROXY_TARGET en el archivo .env.");
+  if (!env.BASE_URL) {
+    throw new Error("Falta configurar BASE_URL en el archivo .env.");
   }
 
   return {
     plugins: [react()],
-    server: {
-      proxy: {
-        "/api/ai": {
-          target: env.API_PROXY_TARGET,
-          changeOrigin: true,
-          secure: true,
-          rewrite: () => "/chat",
-        },
-      },
+    define: {
+      __BASE_URL__: JSON.stringify(env.BASE_URL),
     },
   };
 });
