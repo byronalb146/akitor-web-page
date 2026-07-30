@@ -227,16 +227,22 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: cleanText,
-          history: messages.map(({ role, content }) => ({ role, content })),
+          prompt: cleanText,
         }),
       });
 
-      if (!response.ok) throw new Error("No pudimos conectar con Akitor.");
+      if (!response.ok) {
+        const apiError = await response.json().catch(() => null);
+        const detail =
+          typeof apiError?.detail === "string"
+            ? apiError.detail
+            : `La API respondió con estado ${response.status}.`;
+        throw new Error(detail);
+      }
 
       const initialData = await response.json();
       const data = await resolveProductSearch(initialData, apiUrl);
-      const reply = data.reply ?? data.message ?? data.content;
+      const reply = data.output ?? data.reply ?? data.message ?? data.content;
       if (!reply) throw new Error("La API no devolvió una respuesta válida.");
 
       setMessages((current) => [
@@ -249,7 +255,11 @@ export default function App() {
         },
       ]);
     } catch (requestError) {
-      setError(requestError.message || "Ocurrió un error. Inténtalo nuevamente.");
+      const message =
+        requestError instanceof TypeError && requestError.message === "Failed to fetch"
+          ? "No fue posible conectar con la API. Verifica que el servidor esté disponible."
+          : requestError.message;
+      setError(message || "Ocurrió un error. Inténtalo nuevamente.");
     } finally {
       setIsSending(false);
       setMascotState("idle");

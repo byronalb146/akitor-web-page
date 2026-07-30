@@ -3,4 +3,14 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      "/api/ai": {
+        target: "https://akitor.onrender.com",
+        changeOrigin: true,
+        secure: true,
+        rewrite: () => "/api/v1/ai/responses",
+      },
+    },
+  },
 });
